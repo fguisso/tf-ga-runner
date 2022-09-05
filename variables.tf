@@ -1,3 +1,8 @@
+variable "instance_region" {
+  description = "EC2 Instance region"
+  type        = string
+}
+
 variable "ami" {
   description = "The AMI for the GitHub Runner backing EC2 Instance"
   type        = string
@@ -20,6 +25,11 @@ variable "github_repo_url" {
 
 variable "github_repo_token" {
   description = "The GitHub Repo Pat Token that would be used by the GitHub Runner to authenticate with the GitHub Repo"
+  type        = string
+}
+
+variable "github_runner_version" {
+  description = "GitHub Runner version"
   type        = string
 }
 

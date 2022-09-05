@@ -2,7 +2,7 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "~> 3.27"
+      version = "~> 4.0"
     }
   }
 }
@@ -12,30 +12,28 @@ data "http" "local_ip" {
   url = "https://checkip.amazonaws.com"
 }
 
-data "template_file" "init" {
-  template = file("init.sh")
-  vars = {
-    github_repo_url = var.github_repo_url
-    github_repo_token = var.github_repo_token
-    runner_name = var.runner_name
-  }
-}
-
 provider "aws" {
   profile = "default"
-  region  = "us-east-1"
+  region  = var.instance_region
+}
+
+resource "aws_default_vpc" "main" {
+  tags = {
+    Name = "Default VPC"
+  }
 }
 
 resource "aws_security_group" "allow_inbound" {
   name        = "allow_inbound"
   description = "Allow everything tcp inbound"
+  vpc_id = aws_default_vpc.main.id
 
   ingress {
     description = "Allow SSH"
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["${chomp(data.http.local_ip.body)}/32"]
+    cidr_blocks = ["${chomp(data.http.local_ip.response_body)}/32"]
   }
 
   egress {
@@ -56,7 +54,12 @@ resource "aws_instance" "github_actions_runner" {
   key_name                    = var.key_name
   vpc_security_group_ids      = [aws_security_group.allow_inbound.id]
 
-  user_data = data.template_file.init.rendered
+  user_data = templatefile("init.sh", {
+    github_repo_url = var.github_repo_url
+    github_repo_token = var.github_repo_token
+    github_runner_version = var.github_runner_version
+    runner_name = var.runner_name
+  })
 
   tags = {
     Name = "github-runner"
